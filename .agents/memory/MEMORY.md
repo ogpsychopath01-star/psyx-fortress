@@ -1,0 +1,1 @@
+- [PSYX FORTRESS architecture](psyx-fortress-arch.md) — key decisions on inbound SMTP, theme system, WS auth, and DB schema.

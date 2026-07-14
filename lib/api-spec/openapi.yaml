@@ -3,20 +3,32 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: PSYX MAIL GEN API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: mailbox
+    description: Mailbox/email operations
+  - name: user
+    description: User profile operations
+  - name: admin
+    description: Admin panel operations
+  - name: owner
+    description: Owner panel operations
+  - name: notifications
+    description: Notification operations
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +36,815 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # Auth endpoints
+  /auth/register:
+    post:
+      operationId: registerUser
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error or username taken
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: loginUser
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logoutUser
+      tags: [auth]
+      summary: Logout current user
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /auth/forgot-password:
+    post:
+      operationId: forgotPassword
+      tags: [auth]
+      summary: Request password reset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordInput"
+      responses:
+        "200":
+          description: Reset email sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /auth/reset-password:
+    post:
+      operationId: resetPassword
+      tags: [auth]
+      summary: Reset password with token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordInput"
+      responses:
+        "200":
+          description: Password reset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /auth/check-username:
+    get:
+      operationId: checkUsername
+      tags: [auth]
+      summary: Check if username is available
+      parameters:
+        - name: username
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Availability result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsernameAvailability"
+
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # User / Profile endpoints
+  /user/profile:
+    get:
+      operationId: getUserProfile
+      tags: [user]
+      summary: Get user profile
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+    patch:
+      operationId: updateUserProfile
+      tags: [user]
+      summary: Update user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserProfileUpdate"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
+  /user/change-password:
+    post:
+      operationId: changePassword
+      tags: [user]
+      summary: Change user password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordInput"
+      responses:
+        "200":
+          description: Password changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /user/storage:
+    get:
+      operationId: getUserStorage
+      tags: [user]
+      summary: Get user storage usage
+      responses:
+        "200":
+          description: Storage info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageInfo"
+
+  /user/activity:
+    get:
+      operationId: getUserActivity
+      tags: [user]
+      summary: Get recent account activity / login history
+      responses:
+        "200":
+          description: Activity list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityEntry"
+
+  # Mailbox / Email endpoints
+  /emails:
+    get:
+      operationId: listEmails
+      tags: [mailbox]
+      summary: List emails in a folder
+      parameters:
+        - name: folder
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [inbox, sent, drafts, spam, trash, starred]
+            default: inbox
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: unreadOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Email list with pagination
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailListResponse"
+
+  /emails/compose:
+    post:
+      operationId: composeEmail
+      tags: [mailbox]
+      summary: Send or save a composed email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmailCompose"
+      responses:
+        "201":
+          description: Email sent or saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Email"
+
+  /emails/stats:
+    get:
+      operationId: getEmailStats
+      tags: [mailbox]
+      summary: Get mailbox stats (unread counts per folder)
+      responses:
+        "200":
+          description: Email stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MailboxStats"
+
+  /emails/{id}:
+    get:
+      operationId: getEmail
+      tags: [mailbox]
+      summary: Get a single email
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Email detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Email"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteEmail
+      tags: [mailbox]
+      summary: Delete an email (move to trash or permanent delete)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /emails/{id}/action:
+    patch:
+      operationId: emailAction
+      tags: [mailbox]
+      summary: Perform action on email (star, read, unread, restore, spam)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmailActionInput"
+      responses:
+        "200":
+          description: Action performed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Email"
+
+  /emails/bulk-action:
+    post:
+      operationId: bulkEmailAction
+      tags: [mailbox]
+      summary: Bulk action on multiple emails
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkEmailActionInput"
+      responses:
+        "200":
+          description: Bulk action performed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  # Notifications
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: List user notifications
+      parameters:
+        - name: unreadOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+
+  /notifications/{id}/read:
+    patch:
+      operationId: markNotificationRead
+      tags: [notifications]
+      summary: Mark a notification as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Marked read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+
+  /notifications/read-all:
+    post:
+      operationId: markAllNotificationsRead
+      tags: [notifications]
+      summary: Mark all notifications as read
+      responses:
+        "200":
+          description: All marked read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  # Admin Panel
+  /admin/users:
+    get:
+      operationId: adminListUsers
+      tags: [admin]
+      summary: List all users (admin)
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, suspended, banned]
+      responses:
+        "200":
+          description: User list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserListResponse"
+
+  /admin/users/{id}:
+    get:
+      operationId: adminGetUser
+      tags: [admin]
+      summary: Get user details (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserDetail"
+
+  /admin/users/{id}/action:
+    patch:
+      operationId: adminUserAction
+      tags: [admin]
+      summary: Perform admin action on user (suspend, activate, ban, delete, reset-password)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUserActionInput"
+      responses:
+        "200":
+          description: Action performed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /admin/stats:
+    get:
+      operationId: adminGetStats
+      tags: [admin]
+      summary: Get admin platform stats
+      responses:
+        "200":
+          description: Platform stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
+  /admin/announcements:
+    post:
+      operationId: adminBroadcastAnnouncement
+      tags: [admin]
+      summary: Broadcast announcement to all users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnnouncementInput"
+      responses:
+        "201":
+          description: Announcement sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /admin/reserved-usernames:
+    get:
+      operationId: adminListReservedUsernames
+      tags: [admin]
+      summary: List reserved usernames
+      responses:
+        "200":
+          description: Reserved usernames
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReservedUsername"
+    post:
+      operationId: adminAddReservedUsername
+      tags: [admin]
+      summary: Add a reserved username
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReservedUsernameInput"
+      responses:
+        "201":
+          description: Added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReservedUsername"
+
+  /admin/audit-logs:
+    get:
+      operationId: adminGetAuditLogs
+      tags: [admin]
+      summary: Get audit logs
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Audit logs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditLogListResponse"
+
+  # Owner Panel
+  /owner/stats:
+    get:
+      operationId: ownerGetStats
+      tags: [owner]
+      summary: Get owner-level platform statistics
+      responses:
+        "200":
+          description: Owner stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnerStats"
+
+  /owner/system-logs:
+    get:
+      operationId: ownerGetSystemLogs
+      tags: [owner]
+      summary: Get system/error logs
+      parameters:
+        - name: level
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [info, warn, error]
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: System logs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemLogListResponse"
+
+  /owner/roles:
+    get:
+      operationId: ownerListRoles
+      tags: [owner]
+      summary: List all roles
+      responses:
+        "200":
+          description: Roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Role"
+
+  /owner/admins:
+    get:
+      operationId: ownerListAdmins
+      tags: [owner]
+      summary: List all admin users
+      responses:
+        "200":
+          description: Admins
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminUser"
+    post:
+      operationId: ownerCreateAdmin
+      tags: [owner]
+      summary: Grant admin role to a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminRoleInput"
+      responses:
+        "201":
+          description: Admin created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /owner/admins/{id}:
+    delete:
+      operationId: ownerRemoveAdmin
+      tags: [owner]
+      summary: Remove admin role from user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Admin removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /owner/all-emails:
+    get:
+      operationId: ownerGetAllEmails
+      tags: [owner]
+      summary: Get all emails in the system (owner only)
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: userId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: folder
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: All emails
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnerEmailListResponse"
+
+  /owner/grant-admin-by-email:
+    post:
+      operationId: ownerGrantAdminByEmail
+      tags: [owner]
+      summary: Grant admin role to any user by email (any domain)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GrantAdminByEmailInput"
+      responses:
+        "200":
+          description: Admin granted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /owner/maintenance:
+    get:
+      operationId: ownerGetMaintenanceMode
+      tags: [owner]
+      summary: Get maintenance mode status
+      responses:
+        "200":
+          description: Maintenance status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaintenanceStatus"
+    post:
+      operationId: ownerSetMaintenanceMode
+      tags: [owner]
+      summary: Toggle maintenance mode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MaintenanceModeInput"
+      responses:
+        "200":
+          description: Maintenance mode set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaintenanceStatus"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +852,643 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    SuccessResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+
+    # Auth schemas
+    RegisterInput:
+      type: object
+      required: [username, password, captchaToken]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 32
+        password:
+          type: string
+          minLength: 8
+        displayName:
+          type: string
+        captchaToken:
+          type: string
+
+    LoginInput:
+      type: object
+      required: [email, password, captchaToken]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+        captchaToken:
+          type: string
+        rememberMe:
+          type: boolean
+
+    ForgotPasswordInput:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+
+    ResetPasswordInput:
+      type: object
+      required: [token, password]
+      properties:
+        token:
+          type: string
+        password:
+          type: string
+          minLength: 8
+
+    AuthResponse:
+      type: object
+      required: [user, token]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+
+    UsernameAvailability:
+      type: object
+      required: [available, username]
+      properties:
+        available:
+          type: boolean
+        username:
+          type: string
+        reason:
+          type: ["string", "null"]
+
+    User:
+      type: object
+      required: [id, username, email, displayName, role, status, createdAt]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: string
+        role:
+          type: string
+          enum: [user, admin, owner]
+        status:
+          type: string
+          enum: [active, suspended, banned]
+        avatarUrl:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    # User profile schemas
+    UserProfile:
+      type: object
+      required: [id, username, email, displayName, role, status, createdAt, storageUsed, storageLimit]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: string
+        role:
+          type: string
+        status:
+          type: string
+        avatarUrl:
+          type: ["string", "null"]
+        recoveryEmail:
+          type: ["string", "null"]
+        theme:
+          type: string
+        language:
+          type: string
+        notificationsEnabled:
+          type: boolean
+        twoFactorEnabled:
+          type: boolean
+        storageUsed:
+          type: integer
+        storageLimit:
+          type: integer
+        createdAt:
+          type: string
+        lastLoginAt:
+          type: ["string", "null"]
+
+    UserProfileUpdate:
+      type: object
+      properties:
+        displayName:
+          type: string
+        recoveryEmail:
+          type: ["string", "null"]
+        avatarUrl:
+          type: ["string", "null"]
+        theme:
+          type: string
+        language:
+          type: string
+        notificationsEnabled:
+          type: boolean
+
+    ChangePasswordInput:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
+
+    StorageInfo:
+      type: object
+      required: [used, limit, percentage]
+      properties:
+        used:
+          type: integer
+        limit:
+          type: integer
+        percentage:
+          type: number
+
+    ActivityEntry:
+      type: object
+      required: [id, action, ipAddress, userAgent, createdAt]
+      properties:
+        id:
+          type: integer
+        action:
+          type: string
+        ipAddress:
+          type: string
+        userAgent:
+          type: string
+        createdAt:
+          type: string
+
+    # Email schemas
+    Email:
+      type: object
+      required: [id, subject, fromAddress, toAddress, body, folder, isRead, isStarred, createdAt]
+      properties:
+        id:
+          type: integer
+        subject:
+          type: string
+        fromAddress:
+          type: string
+        toAddress:
+          type: string
+        ccAddress:
+          type: ["string", "null"]
+        body:
+          type: string
+        folder:
+          type: string
+        isRead:
+          type: boolean
+        isStarred:
+          type: boolean
+        hasAttachments:
+          type: boolean
+        attachments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Attachment"
+        replyToId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+
+    Attachment:
+      type: object
+      required: [id, filename, size, mimeType]
+      properties:
+        id:
+          type: integer
+        filename:
+          type: string
+        size:
+          type: integer
+        mimeType:
+          type: string
+        url:
+          type: string
+
+    EmailListResponse:
+      type: object
+      required: [emails, total, page, limit]
+      properties:
+        emails:
+          type: array
+          items:
+            $ref: "#/components/schemas/Email"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    EmailCompose:
+      type: object
+      required: [toAddress, subject, body]
+      properties:
+        toAddress:
+          type: string
+        ccAddress:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+        isDraft:
+          type: boolean
+        replyToId:
+          type: ["integer", "null"]
+
+    EmailActionInput:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [star, unstar, read, unread, restore, spam, trash]
+
+    BulkEmailActionInput:
+      type: object
+      required: [ids, action]
+      properties:
+        ids:
+          type: array
+          items:
+            type: integer
+        action:
+          type: string
+          enum: [star, unstar, read, unread, delete, restore, spam, trash]
+
+    MailboxStats:
+      type: object
+      required: [inbox, sent, drafts, spam, trash, starred, total]
+      properties:
+        inbox:
+          type: integer
+        sent:
+          type: integer
+        drafts:
+          type: integer
+        spam:
+          type: integer
+        trash:
+          type: integer
+        starred:
+          type: integer
+        total:
+          type: integer
+
+    # Notification schemas
+    Notification:
+      type: object
+      required: [id, type, title, message, isRead, createdAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [new_mail, password_changed, account_login, security_alert, announcement]
+        title:
+          type: string
+        message:
+          type: string
+        isRead:
+          type: boolean
+        createdAt:
+          type: string
+
+    # Admin schemas
+    AdminUserListResponse:
+      type: object
+      required: [users, total, page, limit]
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminUserDetail"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    AdminUserDetail:
+      type: object
+      required: [id, username, email, displayName, role, status, storageUsed, emailCount, createdAt]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: string
+        role:
+          type: string
+        status:
+          type: string
+        avatarUrl:
+          type: ["string", "null"]
+        storageUsed:
+          type: integer
+        emailCount:
+          type: integer
+        lastLoginAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    AdminUserActionInput:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [suspend, activate, ban, unban, delete, reset-password]
+        newPassword:
+          type: ["string", "null"]
+
+    AdminStats:
+      type: object
+      required: [totalUsers, activeUsers, suspendedUsers, bannedUsers, totalEmails, totalStorage]
+      properties:
+        totalUsers:
+          type: integer
+        activeUsers:
+          type: integer
+        suspendedUsers:
+          type: integer
+        bannedUsers:
+          type: integer
+        totalEmails:
+          type: integer
+        totalStorage:
+          type: integer
+        newUsersToday:
+          type: integer
+        emailsSentToday:
+          type: integer
+
+    AnnouncementInput:
+      type: object
+      required: [title, message]
+      properties:
+        title:
+          type: string
+        message:
+          type: string
+
+    ReservedUsername:
+      type: object
+      required: [id, username, reason, createdAt]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        reason:
+          type: string
+        createdAt:
+          type: string
+
+    ReservedUsernameInput:
+      type: object
+      required: [username, reason]
+      properties:
+        username:
+          type: string
+        reason:
+          type: string
+
+    AuditLogListResponse:
+      type: object
+      required: [logs, total, page, limit]
+      properties:
+        logs:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditLog"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    AuditLog:
+      type: object
+      required: [id, adminId, action, targetType, createdAt]
+      properties:
+        id:
+          type: integer
+        adminId:
+          type: integer
+        adminUsername:
+          type: string
+        action:
+          type: string
+        targetType:
+          type: string
+        targetId:
+          type: ["integer", "null"]
+        details:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    # Owner schemas
+    OwnerEmailItem:
+      type: object
+      required: [id, subject, fromEmail, toEmail, folder, createdAt, userId, username]
+      properties:
+        id:
+          type: integer
+        subject:
+          type: string
+        fromEmail:
+          type: string
+        toEmail:
+          type: string
+        body:
+          type: string
+        folder:
+          type: string
+        isRead:
+          type: boolean
+        isStarred:
+          type: boolean
+        createdAt:
+          type: string
+        userId:
+          type: integer
+        username:
+          type: string
+
+    OwnerEmailListResponse:
+      type: object
+      required: [emails, total, page, limit]
+      properties:
+        emails:
+          type: array
+          items:
+            $ref: "#/components/schemas/OwnerEmailItem"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    GrantAdminByEmailInput:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+
+    OwnerStats:
+      type: object
+      required: [totalUsers, totalMailboxes, activeSessions, totalStorage, totalEmails, failedLoginAttempts]
+      properties:
+        totalUsers:
+          type: integer
+        totalMailboxes:
+          type: integer
+        activeSessions:
+          type: integer
+        totalStorage:
+          type: integer
+        totalEmails:
+          type: integer
+        failedLoginAttempts:
+          type: integer
+        newUsersThisWeek:
+          type: integer
+        emailsThisWeek:
+          type: integer
+        emailsToday:
+          type: integer
+        newUsersToday:
+          type: integer
+        uptimeSeconds:
+          type: integer
+        serverHealth:
+          type: string
+        dbHealth:
+          type: string
+
+    SystemLogListResponse:
+      type: object
+      required: [logs, total, page, limit]
+      properties:
+        logs:
+          type: array
+          items:
+            $ref: "#/components/schemas/SystemLog"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    SystemLog:
+      type: object
+      required: [id, level, message, createdAt]
+      properties:
+        id:
+          type: integer
+        level:
+          type: string
+          enum: [info, warn, error]
+        message:
+          type: string
+        details:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    Role:
+      type: object
+      required: [id, name, permissions]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+
+    AdminUser:
+      type: object
+      required: [id, username, email, displayName, createdAt]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: string
+        createdAt:
+          type: string
+
+    AdminRoleInput:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: integer
+
+    MaintenanceStatus:
+      type: object
+      required: [enabled, message]
+      properties:
+        enabled:
+          type: boolean
+        message:
+          type: string
+
+    MaintenanceModeInput:
+      type: object
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+        message:
+          type: string

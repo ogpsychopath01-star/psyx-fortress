@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "Syg1NxA6Ut_FysCL0heQM"
+uri = "file://psyx-fortress-deploy.zip"
+type = "unspecified"
+title = "PSYX FORTRESS — Updated Deploy Package"

@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "PSYX MAIL GEN"
+version = "1.0.0"
+id = "artifacts/psyx-mail"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21833
+
+[services.development]
+run = "pnpm --filter @workspace/psyx-mail run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/psyx-mail", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/psyx-mail/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21833"
+BASE_PATH = "/"
